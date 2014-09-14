@@ -1,0 +1,136 @@
+---
+title: "Reproducible Reasearch - Peer Assessment 1"
+output: html_document
+---
+
+##### Mel Haynes Sr - 9/13/2014
+
+This assignment makes use of data from a personal activity monitoring device. This device collects data at 5 minute intervals through out the day. The data consists of two months of data from an anonymous individual collected during the months of October and November, 2012 and include the number of steps taken in 5 minute intervals each day.
+
+##### Project Setup
+```{r}
+setwd("C:/Users/melsr/SkyDrive/datasciencecoursera/Reproducible Research/Assignment 1")
+# install.packages("ggplot2")
+library(ggplot2)
+# install.packages("lattice")
+library(lattice)
+# install.packages("knitr")
+library(knitr)
+# install.packages("plyr")
+library(plyr)
+```
+##### Load Activity Data
+```{r Load activity dat}
+dat <- read.csv("activity.csv", header = TRUE)
+```
+
+```{r}
+steps = tapply(dat$steps, dat$date, sum)
+hist(steps, breaks = 20, main = "Steps Per Day", xlab = "Steps")
+```
+
+##### Mean number of steps taken per day
+```{r}
+mean(steps, na.rm = TRUE)
+```
+##### Median number of steps taken per day
+```{r}
+median(steps, na.rm = TRUE)
+```
+##### Mean number of steps by interval
+```{r}
+meanSteps = tapply(dat$steps, dat$interval, mean, na.rm = TRUE)
+```
+
+##### Convert to 5 minute intervals
+```{r}
+intervals = strptime(formatC(as.numeric(names(meanSteps)), width = 4, flag = "0"), "%H%M")
+```
+
+##### Create a data frame
+```{r}
+totals = data.frame(interval = intervals, steps = meanSteps)
+```
+
+##### Plot
+```{r}
+plot(totals, type = "l", main = "Mean Number of Steps Per 5-min Interval", 
+    xlab = "Intervals", ylab = "Steps")
+```
+
+##### Interval with maximum steps per day
+```{r}
+format(totals[which.max(totals$steps), "interval"], "%H:%M")
+```
+
+##### Total number of missing values
+```{r}
+sum(is.na(dat))
+```
+
+##### Substitute NAs with mean and create new dat
+```{r}
+impute.mean <- function(x) replace(x, is.na(x), mean(x, na.rm = TRUE))
+```
+##### Create new data with NA values imputed to mean (grouped by interval)
+```{r}
+library(plyr)
+imputed = ddply(dat, ~ interval, transform, steps = impute.mean(steps))
+```
+##### Plot with NA's replaced with mean
+```{r Second Plot}
+imputedSteps = tapply(dat$steps, dat$date, sum)
+
+par(mfrow=c(2,2))
+
+hist(steps, breaks = 20, main = "Total Steps Per Day", xlab = "Steps")
+
+hist(imputedSteps, breaks = 20, main = "Total Imputed Steps Per Day", xlab = "Steps")
+```
+
+##### Mean number of steps taken per day
+```{r}
+mean(steps, na.rm = TRUE)
+```
+##### Median number of steps taken per day
+```{r}
+median(steps, na.rm = TRUE)
+```
+
+##### Mean number of steps taken per day (NAs replaced with mean)
+```{r}
+mean(imputedSteps, na.rm = TRUE)
+```
+##### Median number of steps taken per day (NAs replaced with mean)
+```{r}
+median(imputedSteps, na.rm = TRUE)
+```
+##### Filter for weekends
+```{r}
+Sys.setlocale("LC_TIME", "English")
+isWeekend = weekdays(as.Date(dat$date)) %in% c("Saturday", "Sunday")
+dat$daytype = factor(isWeekend, levels = c(FALSE, TRUE), labels = c("weekday", "weekend"))
+```
+##### Plot weekdays vs weekends
+```{r}
+par(mfrow = c(2, 1))
+# Plot Weekdays
+weekdays = dat[dat$daytype == "weekday", ]
+meanWeekdays = data.frame(interval = intervals, 
+steps = tapply(weekdays$steps, weekdays$interval, mean, na.rm = TRUE))
+plot(meanWeekdays, type = "l", main = "Weekdays", xlab = "Intervals", ylab = "Steps", col = "red")
+
+weekends = dat[dat$daytype == "weekend", ]
+meanWeekends = data.frame(interval = intervals, 
+steps = tapply(weekends$steps, weekends$interval, mean, na.rm = TRUE))
+plot(meanWeekends, type = "l", main = "Weekends", xlab = "Intervals", ylab = "Steps", col = "green")
+```
+
+##### Observations: 
+##### It does not appear that imputing the missing values with the mean has a noticable
+##### Affect on the outcome.
+
+##### There are, however, considedrable differences between weekend and weekday activities.
+##### These numbers should be adjusted to account for all the people working over the weekends
+##### on these assignments whose only activity is typing which does not register on the device.
+
